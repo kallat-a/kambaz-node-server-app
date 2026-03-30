@@ -12,11 +12,29 @@ import AssignmentRoutes from "./Kambaz/assignments/routes.js";
 import EnrollmentRoutes from "./Kambaz/enrollments/routes.js";
 
 const app = express();
-const clientUrl = process.env.CLIENT_URL || "http://localhost:3000";
+
+const normalizeOrigin = (url) =>
+  (url || "").trim().replace(/\/$/, "");
+
+const allowedClientOrigin = normalizeOrigin(
+  process.env.CLIENT_URL || "http://localhost:3000",
+);
+
+app.set("trust proxy", 1);
 
 app.use(
   cors({
-    origin: clientUrl,
+    origin(origin, callback) {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      if (normalizeOrigin(origin) === allowedClientOrigin) {
+        callback(null, true);
+        return;
+      }
+      callback(null, false);
+    },
     credentials: true,
   }),
 );
