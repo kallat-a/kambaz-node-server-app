@@ -1,0 +1,47 @@
+import "dotenv/config";
+import express from "express";
+import cors from "cors";
+import session from "express-session";
+import Hello from "./Hello.js";
+import Lab5 from "./Lab5/index.js";
+import db from "./Kambaz/database/index.js";
+import UserRoutes from "./Kambaz/users/routes.js";
+import CourseRoutes from "./Kambaz/courses/routes.js";
+import ModuleRoutes from "./Kambaz/modules/routes.js";
+import AssignmentRoutes from "./Kambaz/assignments/routes.js";
+import EnrollmentRoutes from "./Kambaz/enrollments/routes.js";
+
+const app = express();
+const clientUrl = process.env.CLIENT_URL || "http://localhost:3000";
+
+app.use(
+  cors({
+    origin: clientUrl,
+    credentials: true,
+  }),
+);
+
+const sessionOptions = {
+  secret: process.env.SESSION_SECRET || "kambaz-session-secret",
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    maxAge: 24 * 60 * 60 * 1000,
+  },
+};
+
+app.use(session(sessionOptions));
+app.use(express.json());
+
+UserRoutes(app, db);
+CourseRoutes(app, db);
+ModuleRoutes(app, db);
+AssignmentRoutes(app, db);
+EnrollmentRoutes(app, db);
+Lab5(app);
+Hello(app);
+
+app.listen(process.env.PORT || 4000);
