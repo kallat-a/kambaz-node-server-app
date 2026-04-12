@@ -1,44 +1,34 @@
 import { v4 as uuidv4 } from "uuid";
+import model from "./model.js";
 
-export default function CoursesDao(db) {
-  const findAllCourses = () => db.courses;
+const dashboardCourseProjection = { name: 1, description: 1 };
 
-  const findCourseById = (courseId) =>
-    db.courses.find((c) => c._id === courseId);
+export default function CoursesDao() {
+  const findAllCourses = () =>
+    model.find({}, dashboardCourseProjection);
 
-  const findCoursesForUser = (userId) => {
-    const enrolledIds = db.enrollments
-      .filter((e) => e.user === userId)
-      .map((e) => e.course);
-    return db.courses.filter((c) => enrolledIds.includes(c._id));
-  };
+  const findCourseById = (courseId) => model.findById(courseId);
 
   const createCourse = (course) => {
-    const newCourse = { ...course, _id: course._id || uuidv4() };
-    db.courses = [...db.courses, newCourse];
-    return newCourse;
+    const { modules: _m, ...rest } = course;
+    const newCourse = { ...rest, _id: course._id || uuidv4(), modules: [] };
+    return model.create(newCourse);
   };
 
-  const updateCourse = (courseId, updates) => {
-    db.courses = db.courses.map((c) =>
-      c._id === courseId ? { ...c, ...updates, _id: courseId } : c,
-    );
-    return findCourseById(courseId);
+  const updateCourse = async (courseId, updates) => {
+    const { _id: _ignored, modules: _mod, ...rest } = updates;
+    await model.updateOne({ _id: courseId }, { $set: rest });
+    return model.findById(courseId);
   };
 
-  const deleteCourse = (courseId) => {
-    const before = db.courses.length;
-    db.courses = db.courses.filter((c) => c._id !== courseId);
-    db.modules = db.modules.filter((m) => m.course !== courseId);
-    db.assignments = db.assignments.filter((a) => a.course !== courseId);
-    db.enrollments = db.enrollments.filter((e) => e.course !== courseId);
-    return db.courses.length < before;
+  const deleteCourse = async (courseId) => {
+    const result = await model.deleteOne({ _id: courseId });
+    return result;
   };
 
   return {
     findAllCourses,
     findCourseById,
-    findCoursesForUser,
     createCourse,
     updateCourse,
     deleteCourse,

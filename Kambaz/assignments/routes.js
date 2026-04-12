@@ -3,17 +3,19 @@ import AssignmentsDao from "./dao.js";
 export default function AssignmentRoutes(app, db) {
   const dao = AssignmentsDao(db);
 
-  const findAllAssignments = (req, res) => {
-    res.json(dao.findAllAssignments());
+  const findAllAssignments = async (req, res) => {
+    const list = await dao.findAllAssignments();
+    res.json(list);
   };
 
-  const findAssignmentsForCourse = (req, res) => {
+  const findAssignmentsForCourse = async (req, res) => {
     const { courseId } = req.params;
-    res.json(dao.findAssignmentsForCourse(courseId));
+    const list = await dao.findAssignmentsForCourse(courseId);
+    res.json(list);
   };
 
-  const findAssignmentById = (req, res) => {
-    const assignment = dao.findAssignmentById(req.params.assignmentId);
+  const findAssignmentById = async (req, res) => {
+    const assignment = await dao.findAssignmentById(req.params.assignmentId);
     if (!assignment) {
       res.sendStatus(404);
       return;
@@ -21,32 +23,31 @@ export default function AssignmentRoutes(app, db) {
     res.json(assignment);
   };
 
-  const createAssignmentForCourse = (req, res) => {
+  const createAssignmentForCourse = async (req, res) => {
     const { courseId } = req.params;
     const assignment = { ...req.body, course: courseId };
-    const created = dao.createAssignment(assignment);
+    const created = await dao.createAssignment(assignment);
     res.json(created);
   };
 
-  const updateAssignment = (req, res) => {
+  const updateAssignment = async (req, res) => {
     const { assignmentId } = req.params;
-    const existing = dao.findAssignmentById(assignmentId);
+    const existing = await dao.findAssignmentById(assignmentId);
     if (!existing) {
       res.sendStatus(404);
       return;
     }
-    const updated = dao.updateAssignment(assignmentId, req.body);
+    const updated = await dao.updateAssignment(assignmentId, req.body);
     res.json(updated);
   };
 
-  const deleteAssignment = (req, res) => {
+  const deleteAssignment = async (req, res) => {
     const { assignmentId } = req.params;
-    const existing = dao.findAssignmentById(assignmentId);
-    if (!existing) {
+    const ok = await dao.deleteAssignment(assignmentId);
+    if (!ok) {
       res.sendStatus(404);
       return;
     }
-    dao.deleteAssignment(assignmentId);
     res.sendStatus(204);
   };
 

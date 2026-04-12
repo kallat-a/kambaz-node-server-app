@@ -1,23 +1,17 @@
 import UsersDao from "./dao.js";
 
-function sanitize(user) {
-  if (!user) return null;
-  const { password, ...rest } = user;
-  return rest;
-}
-
 export default function UserRoutes(app, db) {
   const dao = UsersDao(db);
 
-  const signin = (req, res) => {
+  const signin = async (req, res) => {
     const { username, password } = req.body;
-    const user = dao.findUserByUsername(username);
-    if (!user || user.password !== password) {
-      res.status(403).json({ message: "Invalid credentials" });
-      return;
+    const currentUser = await dao.findUserByCredentials(username, password);
+    if (currentUser) {
+      req.session["currentUser"] = currentUser;
+      res.json(currentUser);
+    } else {
+      res.status(401).json({ message: "Unable to login. Try again later." });
     }
-    req.session.currentUser = sanitize(user);
-    res.json(req.session.currentUser);
   };
 
   const signout = (req, res) => {
@@ -38,57 +32,69 @@ export default function UserRoutes(app, db) {
     res.json(req.session?.currentUser ?? null);
   };
 
-  const signup = (req, res) => {
-    const created = dao.createUser(req.body);
-    if (!created) {
+  const signup = async (req, res) => {
+    const user = await dao.findUserByUsername(req.body.username);
+    if (user) {
       res.status(400).json({ message: "Username already taken" });
       return;
     }
-    req.session.currentUser = sanitize(created);
-    res.json(req.session.currentUser);
+    const currentUser = await dao.createUser(req.body);
+    req.session["currentUser"] = currentUser;
+    res.json(currentUser);
   };
 
-  const findAllUsers = (req, res) => {
-    res.json(dao.findAllUsers().map(sanitize));
+  const createUser = async (req, res) => {
+    const user = await dao.createUser(req.body);
+    res.json(user);
   };
 
-  const findUserById = (req, res) => {
-    const user = dao.findUserById(req.params.userId);
-    if (!user) {
-      res.sendStatus(404);
+  const findAllUsers = async (req, res) => {
+    const { role, name } = req.query;
+    if (role && name) {
+      const users = await dao.findUsersByRoleAndPartialName(role, name);
+      res.json(users);
       return;
     }
-    res.json(sanitize(user));
+    if (role) {
+      const users = await dao.findUsersByRole(role);
+      res.json(users);
+      return;
+    }
+    if (name) {
+      const users = await dao.findUsersByPartialName(name);
+      res.json(users);
+      return;
+    }
+    const users = await dao.findAllUsers();
+    res.json(users);
   };
 
-  const updateUser = (req, res) => {
+  const findUserById = async (req, res) => {
+    const user = await dao.findUserById(req.params.userId);
+    res.json(user);
+  };
+
+  const updateUser = async (req, res) => {
     const { userId } = req.params;
-    const existing = dao.findUserById(userId);
-    if (!existing) {
-      res.sendStatus(404);
-      return;
+    const userUpdates = req.body;
+    await dao.updateUser(userId, userUpdates);
+    const currentUser = req.session["currentUser"];
+    if (currentUser && currentUser._id === userId) {
+      req.session["currentUser"] = { ...currentUser, ...userUpdates };
     }
-    const updated = dao.updateUser(userId, req.body);
-    const clean = sanitize(updated);
-    if (req.session.currentUser && req.session.currentUser._id === userId) {
-      req.session.currentUser = clean;
-    }
-    res.json(clean);
+    res.json(currentUser);
   };
 
-  const deleteUser = (req, res) => {
-    const ok = dao.deleteUser(req.params.userId);
-    if (!ok) {
-      res.sendStatus(404);
-      return;
-    }
-    res.sendStatus(204);
+  const deleteUser = async (req, res) => {
+    const status = await dao.deleteUser(req.params.userId);
+    res.json(status);
   };
 
   app.post("/api/users/signin", signin);
   app.post("/api/users/signout", signout);
   app.get("/api/users/profile", profile);
-  app.post("/api/users", signup);
+  app.post("/api/users/signup", signup);
+  app.post("/api/users", createUser);
   app.get("/api/users", findAllUsers);
   app.get("/api/users/:userId", findUserById);
   app.put("/api/users/:userId", updateUser);
