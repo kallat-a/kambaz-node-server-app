@@ -12,15 +12,25 @@ import ModuleRoutes from "./Kambaz/modules/routes.js";
 import AssignmentRoutes from "./Kambaz/assignments/routes.js";
 import EnrollmentRoutes from "./Kambaz/enrollments/routes.js";
 
-const CONNECTION_STRING =
-  process.env.DATABASE_CONNECTION_STRING ||
-  "mongodb://127.0.0.1:27017/kambaz";
+const DATABASE_URI = (process.env.DATABASE_CONNECTION_STRING || "").trim();
 
-if (process.env.RENDER === "true" && !process.env.DATABASE_CONNECTION_STRING) {
+const runningOnRender =
+  Boolean(process.env.RENDER) || Boolean(process.env.RENDER_SERVICE_ID);
+
+if (runningOnRender && !DATABASE_URI) {
   console.error(
-    "DATABASE_CONNECTION_STRING is not set. Add your Atlas URI in Render → Environment.",
+    "DATABASE_CONNECTION_STRING is missing or empty on Render.",
+    "In the Render dashboard: Web Service → Environment → add DATABASE_CONNECTION_STRING",
+    "with your full Atlas connection string (mongodb+srv://...).",
   );
   process.exit(1);
+}
+
+const CONNECTION_STRING =
+  DATABASE_URI || "mongodb://127.0.0.1:27017/kambaz";
+
+if (runningOnRender) {
+  console.log("DATABASE_CONNECTION_STRING is set:", DATABASE_URI ? "yes" : "no");
 }
 
 const app = express();
