@@ -61,14 +61,18 @@ app.use(
   }),
 );
 
+const productionSession =
+  process.env.NODE_ENV === "production" ||
+  process.env.SERVER_ENV === "production";
+
 const sessionOptions = {
   secret: process.env.SESSION_SECRET || "kambaz-session-secret",
   resave: false,
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    secure: productionSession,
+    sameSite: productionSession ? "none" : "lax",
     maxAge: 24 * 60 * 60 * 1000,
   },
 };
