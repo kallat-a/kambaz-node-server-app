@@ -1,31 +1,53 @@
 import CoursesDao from "./dao.js";
+import EnrollmentsDao from "../enrollments/dao.js";
 
 export default function CourseRoutes(app, db) {
   const dao = CoursesDao(db);
+  const enrollmentsDao = EnrollmentsDao(db);
 
-  const findAllCourses = (req, res) => {
-    res.json(dao.findAllCourses());
+  const findAllCourses = async (req, res) => {
+    const courses = await dao.findAllCourses();
+    res.json(courses);
   };
 
-  const findCoursesForUser = (req, res) => {
-    res.json(dao.findCoursesForUser(req.params.userId));
+  const findCoursesForUser = async (req, res) => {
+    let { userId } = req.params;
+    if (userId === "current") {
+      const currentUser = req.session["currentUser"];
+      if (!currentUser) {
+        res.sendStatus(401);
+        return;
+      }
+      userId = currentUser._id;
+    }
+    const courses = await dao.findCoursesForUser(userId);
+    res.json(courses);
   };
 
-  const createCourse = (req, res) => {
-    res.json(dao.createCourse(req.body));
+  const createCourse = async (req, res) => {
+    const currentUser = req.session["currentUser"];
+    if (!currentUser) {
+      res.sendStatus(401);
+      return;
+    }
+    const newCourse = await dao.createCourse(req.body);
+    enrollmentsDao.enrollUserInCourse(currentUser._id, newCourse._id);
+    res.json(newCourse);
   };
 
-  const updateCourse = (req, res) => {
+  const updateCourse = async (req, res) => {
     const { courseId } = req.params;
-    if (!dao.findCourseById(courseId)) {
+    const existing = await dao.findCourseById(courseId);
+    if (!existing) {
       res.sendStatus(404);
       return;
     }
-    res.json(dao.updateCourse(courseId, req.body));
+    const updated = await dao.updateCourse(courseId, req.body);
+    res.json(updated);
   };
 
-  const deleteCourse = (req, res) => {
-    const ok = dao.deleteCourse(req.params.courseId);
+  const deleteCourse = async (req, res) => {
+    const ok = await dao.deleteCourse(req.params.courseId);
     if (!ok) {
       res.sendStatus(404);
       return;
