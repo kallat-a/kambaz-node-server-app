@@ -7,15 +7,21 @@ import Hello from "./Hello.js";
 import Lab5 from "./Lab5/index.js";
 import db from "./Kambaz/database/index.js";
 import UserRoutes from "./Kambaz/users/routes.js";
-
-const CONNECTION_STRING =
-  process.env.DATABASE_CONNECTION_STRING ||
-  "mongodb://127.0.0.1:27017/kambaz";
-mongoose.connect(CONNECTION_STRING);
 import CourseRoutes from "./Kambaz/courses/routes.js";
 import ModuleRoutes from "./Kambaz/modules/routes.js";
 import AssignmentRoutes from "./Kambaz/assignments/routes.js";
 import EnrollmentRoutes from "./Kambaz/enrollments/routes.js";
+
+const CONNECTION_STRING =
+  process.env.DATABASE_CONNECTION_STRING ||
+  "mongodb://127.0.0.1:27017/kambaz";
+
+if (process.env.RENDER === "true" && !process.env.DATABASE_CONNECTION_STRING) {
+  console.error(
+    "DATABASE_CONNECTION_STRING is not set. Add your Atlas URI in Render → Environment.",
+  );
+  process.exit(1);
+}
 
 const app = express();
 
@@ -68,4 +74,25 @@ EnrollmentRoutes(app, db);
 Lab5(app);
 Hello(app);
 
-app.listen(process.env.PORT || 4000);
+mongoose.connection.on("error", (err) => {
+  console.error("MongoDB connection error:", err.message);
+});
+
+async function start() {
+  try {
+    await mongoose.connect(CONNECTION_STRING, {
+      serverSelectionTimeoutMS: 15_000,
+    });
+    console.log("MongoDB connected");
+  } catch (err) {
+    console.error("MongoDB connection failed:", err.message);
+    process.exit(1);
+  }
+
+  const port = process.env.PORT || 4000;
+  app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
+}
+
+start();
