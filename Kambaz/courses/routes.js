@@ -1,14 +1,36 @@
 import CoursesDao from "./dao.js";
 import EnrollmentsDao from "../enrollments/dao.js";
 import AssignmentsDao from "../assignments/dao.js";
+import QuizzesDao from "../quizzes/dao.js";
+import QuizAttemptsDao from "../quizAttempts/dao.js";
 
 export default function CourseRoutes(app, db) {
   const dao = CoursesDao();
   const enrollmentsDao = EnrollmentsDao(db);
   const assignmentsDao = AssignmentsDao(db);
+  const quizzesDao = QuizzesDao();
+  const quizAttemptsDao = QuizAttemptsDao();
 
   const findAllCourses = async (req, res) => {
     const courses = await dao.findAllCourses();
+    res.json(courses);
+  };
+
+  const findCoursesTeaching = async (req, res) => {
+    const sessionUser = req.session["currentUser"];
+    if (!sessionUser) {
+      res.sendStatus(401);
+      return;
+    }
+    let { userId } = req.params;
+    if (userId === "current") {
+      userId = sessionUser._id;
+    }
+    if (String(sessionUser._id) !== String(userId)) {
+      res.sendStatus(403);
+      return;
+    }
+    const courses = await dao.findCoursesByAuthor(userId);
     res.json(courses);
   };
 
@@ -74,7 +96,11 @@ export default function CourseRoutes(app, db) {
       res.sendStatus(401);
       return;
     }
-    const newCourse = await dao.createCourse(req.body);
+    const payload = {
+      ...req.body,
+      author: req.body.author || currentUser._id,
+    };
+    const newCourse = await dao.createCourse(payload);
     await enrollmentsDao.enrollUserInCourse(currentUser._id, newCourse._id);
     res.json(newCourse);
   };
@@ -93,6 +119,8 @@ export default function CourseRoutes(app, db) {
   const deleteCourse = async (req, res) => {
     const { courseId } = req.params;
     await enrollmentsDao.unenrollAllUsersFromCourse(courseId);
+    await quizAttemptsDao.deleteAttemptsForCourse(courseId);
+    await quizzesDao.deleteQuizzesForCourse(courseId);
     await assignmentsDao.deleteAssignmentsForCourse(courseId);
     const status = await dao.deleteCourse(courseId);
     if (!status.deletedCount) {
@@ -103,6 +131,7 @@ export default function CourseRoutes(app, db) {
   };
 
   app.get("/api/courses", findAllCourses);
+  app.get("/api/users/:userId/courses-teaching", findCoursesTeaching);
   app.get("/api/courses/:courseId/users", findUsersForCourse);
   app.get("/api/users/:userId/courses", findCoursesForUser);
   app.post("/api/users/:uid/courses/:cid", enrollUserInCourse);

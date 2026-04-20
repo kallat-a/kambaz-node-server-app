@@ -11,6 +11,7 @@ import CourseRoutes from "./Kambaz/courses/routes.js";
 import ModuleRoutes from "./Kambaz/modules/routes.js";
 import AssignmentRoutes from "./Kambaz/assignments/routes.js";
 import EnrollmentRoutes from "./Kambaz/enrollments/routes.js";
+import QuizRoutes from "./Kambaz/quizzes/routes.js";
 
 const DATABASE_URI = (process.env.DATABASE_CONNECTION_STRING || "").trim();
 
@@ -85,6 +86,7 @@ CourseRoutes(app, db);
 ModuleRoutes(app, db);
 AssignmentRoutes(app, db);
 EnrollmentRoutes(app, db);
+QuizRoutes(app, db);
 Lab5(app);
 Hello(app);
 
