@@ -1,11 +1,14 @@
 import { v4 as uuidv4 } from "uuid";
 import model from "./model.js";
 
-const dashboardCourseProjection = { name: 1, description: 1 };
+const dashboardCourseProjection = { name: 1, description: 1, author: 1 };
 
 export default function CoursesDao() {
   const findAllCourses = () =>
     model.find({}, dashboardCourseProjection);
+
+  const findCoursesByAuthor = (authorId) =>
+    model.find({ author: authorId }, dashboardCourseProjection);
 
   const findCourseById = (courseId) => model.findById(courseId);
 
@@ -28,6 +31,7 @@ export default function CoursesDao() {
 
   return {
     findAllCourses,
+    findCoursesByAuthor,
     findCourseById,
     createCourse,
     updateCourse,
